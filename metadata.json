@@ -1,0 +1,6 @@
+{
+  "name": "CertiFlow — Advanced Certificate Creation & Automation Platform",
+  "description": "Institutional certificate maker, template designer, dynamic personalization engine, and bulk distribution automation system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
