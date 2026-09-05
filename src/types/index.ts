@@ -104,6 +104,8 @@ export interface InstitutionDetails {
   primaryLogoUrl: string;
   secondaryLogoUrl?: string;
   departmentLogoUrl?: string;
+  officialStampUrl?: string;
+  officialSealUrl?: string;
   watermarkUrl?: string;
   watermarkOpacity: number;
   showLogoOnCertificate?: boolean;

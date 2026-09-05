@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Eye,
   Sliders,
-  Trash2
+  Trash2,
+  Stamp
 } from 'lucide-react';
 import { InstitutionDetails } from '../../types';
 import { StorageService } from '../../lib/storage';
@@ -43,7 +44,7 @@ export const InstitutionalIdentityCard: React.FC<InstitutionalIdentityCardProps>
 
   const handleLogoUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    targetField: 'primaryLogoUrl' | 'secondaryLogoUrl' | 'watermarkUrl'
+    targetField: 'primaryLogoUrl' | 'secondaryLogoUrl' | 'watermarkUrl' | 'officialStampUrl' | 'officialSealUrl'
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -57,7 +58,7 @@ export const InstitutionalIdentityCard: React.FC<InstitutionalIdentityCardProps>
     reader.onload = (evt) => {
       const dataUrl = evt.target?.result as string;
       handleFieldChange(targetField, dataUrl);
-      onNotify?.('Institutional logo uploaded and ready for certificates!', 'success');
+      onNotify?.('Institutional image asset uploaded and ready for certificates!', 'success');
     };
     reader.readAsDataURL(file);
   };
@@ -367,7 +368,179 @@ export const InstitutionalIdentityCard: React.FC<InstitutionalIdentityCardProps>
         </div>
       </div>
 
-      {/* SECTION 2: Official Institutional Profile Metadata */}
+      {/* SECTION 2: Official Institutional Stamp & Embossed Seal */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-6">
+        <div className="border-b border-slate-100 pb-4 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl bg-amber-50 p-2 text-amber-600 dark:bg-amber-950 dark:text-amber-400">
+              <Stamp className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Official Institutional Stamp & Embossed Seal
+              </h3>
+              <p className="text-xs text-slate-500">
+                Upload your official institutional wax seal, registrar stamp emblem, or department ink seal. Saving will automatically replace the stamp/seal on all certificate templates.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 flex items-center gap-1">
+            <ShieldCheck className="h-3.5 w-3.5" /> Official Authentication
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Official Stamp Upload Box */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                  Official Institutional Stamp (Ink/Digital)
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Registrar office stamp, department crest, or digital verification stamp.
+                </p>
+              </div>
+              {profile.officialStampUrl && (
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('officialStampUrl', '')}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </button>
+              )}
+            </div>
+
+            {/* Dropzone */}
+            <div className="flex items-center gap-3">
+              <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800 hover:border-amber-500 transition-colors">
+                <Upload className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {profile.officialStampUrl ? 'Replace Stamp Image' : 'Upload Stamp File'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  onChange={(e) => handleLogoUpload(e, 'officialStampUrl')}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Stamp URL Input */}
+            <input
+              type="text"
+              placeholder="Or enter Image URL (e.g. /stamp.png)"
+              value={profile.officialStampUrl || ''}
+              onChange={(e) => handleFieldChange('officialStampUrl', e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono"
+            />
+
+            {/* Live Stamp Canvas Preview */}
+            <div className="rounded-lg border border-amber-200/60 bg-[#fffdf8] p-3 flex items-center justify-center min-h-[100px] relative">
+              <span className="absolute top-1.5 left-2 text-[9px] font-bold uppercase text-amber-800/60">
+                Parchment Preview
+              </span>
+              {profile.officialStampUrl ? (
+                <img
+                  src={profile.officialStampUrl}
+                  alt="Official Institutional Stamp"
+                  className="max-h-20 max-w-[80%] object-contain drop-shadow-sm"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-xs text-slate-400 italic">No custom stamp uploaded</span>
+              )}
+            </div>
+          </div>
+
+          {/* Official Seal Upload Box */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                  Official Institutional Seal (Wax/Embossed)
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  University emblem seal, gold wax medal seal, or accreditation crest.
+                </p>
+              </div>
+              {profile.officialSealUrl && (
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('officialSealUrl', '')}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </button>
+              )}
+            </div>
+
+            {/* Dropzone */}
+            <div className="flex items-center gap-3">
+              <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800 hover:border-amber-500 transition-colors">
+                <Upload className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {profile.officialSealUrl ? 'Replace Seal Image' : 'Upload Seal File'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  onChange={(e) => handleLogoUpload(e, 'officialSealUrl')}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Seal URL Input */}
+            <input
+              type="text"
+              placeholder="Or enter Image URL (e.g. /seal.png)"
+              value={profile.officialSealUrl || ''}
+              onChange={(e) => handleFieldChange('officialSealUrl', e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white font-mono"
+            />
+
+            {/* Live Seal Canvas Preview */}
+            <div className="rounded-lg border border-amber-200/60 bg-[#fffdf8] p-3 flex items-center justify-center min-h-[100px] relative">
+              <span className="absolute top-1.5 left-2 text-[9px] font-bold uppercase text-amber-800/60">
+                Parchment Preview
+              </span>
+              {profile.officialSealUrl ? (
+                <img
+                  src={profile.officialSealUrl}
+                  alt="Official Institutional Seal"
+                  className="max-h-20 max-w-[80%] object-contain drop-shadow-sm"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="text-xs text-slate-400 italic">No custom seal uploaded</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Sync Prompt Bar */}
+        <div className="rounded-xl bg-amber-50/80 p-3.5 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-amber-900 dark:text-amber-200">
+            <Sparkles className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              Click <strong>Save & Sync to Templates</strong> to automatically apply your official stamp and seal across all certificate templates.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSave(true)}
+            className="rounded-lg bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 shrink-0 flex items-center gap-1.5"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Sync All Templates
+          </button>
+        </div>
+      </div>
+
+      {/* SECTION 3: Official Institutional Profile Metadata */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-800 dark:bg-slate-900 space-y-6">
         <div className="border-b border-slate-100 pb-4 dark:border-slate-800 flex items-center gap-2">
           <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">

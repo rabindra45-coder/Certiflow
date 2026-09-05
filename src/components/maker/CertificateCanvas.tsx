@@ -815,6 +815,24 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
           )}
         </div>
       );
+    } else if (el.type === 'stamp') {
+      const stampImg = el.url || template.institution.officialStampUrl || template.institution.officialSealUrl || template.stamp.imageUrl;
+      innerContent = (
+        <div className="w-full h-full flex items-center justify-center overflow-hidden pointer-events-none">
+          {stampImg ? (
+            <img
+              src={stampImg}
+              alt={el.label || 'Official Stamp'}
+              className="max-h-full max-w-full object-contain drop-shadow-xs"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="inline-flex items-center justify-center px-3 py-1 rounded-full border border-amber-600 bg-amber-50 text-amber-800 text-xs font-bold font-cinzel">
+              ★ {interpolatedContent || 'OFFICIAL STAMP'} ★
+            </div>
+          )}
+        </div>
+      );
     } else if (el.type === 'badge') {
       innerContent = (
         <div
@@ -1078,6 +1096,7 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
 
     const posX = stamp.x || 50;
     const posY = stamp.y || 83;
+    const customStampImg = stamp.imageUrl || template.institution.officialStampUrl || template.institution.officialSealUrl;
 
     return (
       <div
@@ -1090,35 +1109,46 @@ export const CertificateCanvas: React.FC<CertificateCanvasProps> = ({
           zIndex: 25
         }}
       >
-        {/* Ornate Gold / Crimson Wax Seal Emblem */}
-        <div className="relative w-28 h-28 flex items-center justify-center">
-          {/* Outer Starburst Scallop */}
-          <div
-            className="w-full h-full rounded-full flex items-center justify-center shadow-md"
-            style={{
-              background:
-                stamp.type === 'seal'
-                  ? 'radial-gradient(circle at 35% 35%, #ffd700, #b8860b 70%, #8b6508)'
-                  : stamp.type === 'college'
-                  ? 'radial-gradient(circle at 35% 35%, #f43f5e, #be123c 70%, #881337)'
-                  : 'radial-gradient(circle at 35% 35%, #38bdf8, #0284c7 70%, #0369a1)',
-              border: '3px solid rgba(255,255,255,0.5)'
-            }}
-          >
-            {/* Inner Ring */}
-            <div className="w-[86%] h-[86%] rounded-full border border-dashed border-white/80 flex flex-col items-center justify-center p-1 text-center text-white">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white mb-0.5">
-                <path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 16.1l-4.8 2.5.9-5.3-3.8-3.7 5.3-.8L12 2z" />
-              </svg>
-              <span className="text-[7.5px] font-cinzel font-bold tracking-wider leading-tight uppercase">
-                {stamp.label || 'OFFICIAL SEAL'}
-              </span>
-              <span className="text-[6.5px] font-montserrat tracking-widest uppercase opacity-90 mt-0.5">
-                VERIFIED
-              </span>
+        {customStampImg ? (
+          <div className="relative w-28 h-28 flex items-center justify-center">
+            <img
+              src={customStampImg}
+              alt={stamp.label || 'Official Institutional Stamp'}
+              className="max-h-full max-w-full object-contain drop-shadow-md"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        ) : (
+          /* Ornate Gold / Crimson Wax Seal Emblem */
+          <div className="relative w-28 h-28 flex items-center justify-center">
+            {/* Outer Starburst Scallop */}
+            <div
+              className="w-full h-full rounded-full flex items-center justify-center shadow-md"
+              style={{
+                background:
+                  stamp.type === 'seal'
+                    ? 'radial-gradient(circle at 35% 35%, #ffd700, #b8860b 70%, #8b6508)'
+                    : stamp.type === 'college'
+                    ? 'radial-gradient(circle at 35% 35%, #f43f5e, #be123c 70%, #881337)'
+                    : 'radial-gradient(circle at 35% 35%, #38bdf8, #0284c7 70%, #0369a1)',
+                border: '3px solid rgba(255,255,255,0.5)'
+              }}
+            >
+              {/* Inner Ring */}
+              <div className="w-[86%] h-[86%] rounded-full border border-dashed border-white/80 flex flex-col items-center justify-center p-1 text-center text-white">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white mb-0.5">
+                  <path d="M12 2l2.4 4.8 5.3.8-3.8 3.7.9 5.3L12 16.1l-4.8 2.5.9-5.3-3.8-3.7 5.3-.8L12 2z" />
+                </svg>
+                <span className="text-[7.5px] font-cinzel font-bold tracking-wider leading-tight uppercase">
+                  {stamp.label || 'OFFICIAL SEAL'}
+                </span>
+                <span className="text-[6.5px] font-montserrat tracking-widest uppercase opacity-90 mt-0.5">
+                  VERIFIED
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };

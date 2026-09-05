@@ -70,6 +70,8 @@ export const DEFAULT_INSTITUTION: InstitutionDetails = {
   tagline: 'Excellence in Innovation, Scholarship, and Leadership',
   accreditation: 'Accredited by the Global Board of Higher Education (ABHE-2024)',
   primaryLogoUrl: '/logo.png',
+  officialStampUrl: '',
+  officialSealUrl: '',
   showLogoOnCertificate: true,
   logoPosition: 'top-center',
   logoWidthPercent: 14,
@@ -949,8 +951,27 @@ export const StorageService = {
     }));
 
     let updatedCount = 0;
+    const activeStampImage = activeInst.officialStampUrl || activeInst.officialSealUrl;
+
     const updatedTemplates = templates.map(t => {
       updatedCount++;
+
+      const updatedStamp = {
+        ...t.stamp,
+        imageUrl: activeStampImage || t.stamp.imageUrl,
+        enabled: activeStampImage ? true : t.stamp.enabled
+      };
+
+      const updatedElements = (t.elements || []).map(el => {
+        if (el.type === 'stamp') {
+          return {
+            ...el,
+            url: activeStampImage || el.url
+          };
+        }
+        return el;
+      });
+
       return {
         ...t,
         institution: {
@@ -958,6 +979,8 @@ export const StorageService = {
           ...activeInst
         },
         signatures: defaultSigs.length > 0 ? defaultSigs : t.signatures,
+        stamp: updatedStamp,
+        elements: updatedElements,
         updatedAt: new Date().toISOString()
       };
     });

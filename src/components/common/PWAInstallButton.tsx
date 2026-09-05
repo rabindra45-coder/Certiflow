@@ -38,10 +38,11 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
         <button
           onClick={handleInstallClick}
           title="Download CertiFlow app to home screen"
-          className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 transition-all dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-900"
+          className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2 py-1.5 text-xs font-bold text-indigo-700 shadow-xs hover:bg-indigo-100 transition-all dark:border-indigo-800 dark:bg-indigo-950/80 dark:text-indigo-300 dark:hover:bg-indigo-900 shrink-0"
         >
-          <Download className="h-3.5 w-3.5" />
-          <span>Install App</span>
+          <Download className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="hidden xs:inline">Install App</span>
+          <span className="xs:hidden">App</span>
         </button>
 
         {showIOSGuide && (
