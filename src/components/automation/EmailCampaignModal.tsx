@@ -233,7 +233,19 @@ With highest honors,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(smtpConfig)
       });
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data: any;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = {
+          success: false,
+          message: (res.status === 404 || text.includes('<!DOCTYPE'))
+            ? 'Backend API route (/api/smtp/verify) not reachable. Ensure Vercel Serverless Function or Express server is running.'
+            : `Server returned non-JSON response (${res.status}).`
+        };
+      }
       if (data.success) {
         setSmtpStatusMessage(`250 OK: Connected to ${smtpConfig.host} (${data.details?.latencyMs || 0}ms)`);
         onShowToast('SMTP Handshake Verified', data.message, 'success');
@@ -246,8 +258,11 @@ With highest honors,
         onShowToast('SMTP Handshake Failed', data.message, 'error');
       }
     } catch (e: any) {
-      setSmtpStatusMessage(e?.message || 'Connection error');
-      onShowToast('Verification Error', e?.message, 'error');
+      const msg = e?.message?.includes('string did not match')
+        ? 'Backend endpoint unreachable (invalid response format).'
+        : (e?.message || 'Connection error');
+      setSmtpStatusMessage(msg);
+      onShowToast('Verification Error', msg, 'error');
     } finally {
       setIsVerifyingSmtp(false);
     }
@@ -415,7 +430,19 @@ With highest honors,
             })
           });
 
-          const data = await res.json();
+          const contentType = res.headers.get('content-type') || '';
+          let data: any;
+          if (contentType.includes('application/json')) {
+            data = await res.json();
+          } else {
+            const text = await res.text();
+            data = {
+              success: false,
+              message: (res.status === 404 || text.includes('<!DOCTYPE'))
+                ? 'Backend endpoint (/api/smtp/send-certificate) not reachable.'
+                : `Server returned non-JSON response (${res.status}).`
+            };
+          }
           if (data.success) {
             sentCount++;
             logs.push({

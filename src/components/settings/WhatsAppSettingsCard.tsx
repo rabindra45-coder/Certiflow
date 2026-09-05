@@ -169,7 +169,19 @@ export const WhatsAppSettingsCard: React.FC<WhatsAppSettingsCardProps> = ({ onSh
         })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data: any;
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = {
+          success: false,
+          message: (res.status === 404 || text.includes('<!DOCTYPE'))
+            ? 'Backend API (/api/whatsapp/verify) not reachable.'
+            : `Server returned non-JSON response (${res.status}).`
+        };
+      }
       setTestResult(data);
 
       if (data.success) {

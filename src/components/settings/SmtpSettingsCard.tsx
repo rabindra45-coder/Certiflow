@@ -171,7 +171,28 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
         })
       });
 
-      const data: SmtpTestResult = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      let data: SmtpTestResult;
+
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        if (response.status === 404 || text.includes('<!DOCTYPE') || text.includes('<html')) {
+          data = {
+            success: false,
+            message: 'Backend SMTP API endpoint not reachable (404/SPA rewrite). Ensure Vercel Serverless Function or Express server is active.',
+            details: { latencyMs: 0 }
+          };
+        } else {
+          data = {
+            success: false,
+            message: `Server returned unexpected response (${response.status}).`,
+            details: { latencyMs: 0 }
+          };
+        }
+      }
+
       setVerifyResult(data);
 
       if (data.success) {
@@ -186,7 +207,9 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
     } catch (err: any) {
       const result: SmtpTestResult = {
         success: false,
-        message: err?.message || 'Failed to reach local server verification endpoint.',
+        message: err?.message?.includes('string did not match')
+          ? 'Backend endpoint unreachable (received invalid non-JSON response). Check server connection.'
+          : (err?.message || 'Failed to reach local server verification endpoint.'),
         details: { latencyMs: 0 }
       };
       setVerifyResult(result);
@@ -227,7 +250,28 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
         })
       });
 
-      const data: SmtpTestResult = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      let data: SmtpTestResult;
+
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        if (response.status === 404 || text.includes('<!DOCTYPE') || text.includes('<html')) {
+          data = {
+            success: false,
+            message: 'Backend SMTP API endpoint not reachable (404/SPA rewrite). Ensure Vercel Serverless Function or Express server is active.',
+            details: {}
+          };
+        } else {
+          data = {
+            success: false,
+            message: `Server returned unexpected response (${response.status}).`,
+            details: {}
+          };
+        }
+      }
+
       setSendTestResult(data);
 
       if (data.success) {
@@ -242,7 +286,9 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
     } catch (err: any) {
       const result: SmtpTestResult = {
         success: false,
-        message: err?.message || 'Failed to communicate with test email dispatcher.',
+        message: err?.message?.includes('string did not match')
+          ? 'Backend email dispatcher endpoint unreachable.'
+          : (err?.message || 'Failed to communicate with test email dispatcher.'),
         details: {}
       };
       setSendTestResult(result);

@@ -795,7 +795,8 @@ export const StorageService = {
   async initializeStore(): Promise<void> {
     try {
       const res = await fetch('/api/store/all');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const { data } = await res.json();
         if (data) {
           if (data[STORAGE_KEYS.TEMPLATES]) memoryCache[STORAGE_KEYS.TEMPLATES] = data[STORAGE_KEYS.TEMPLATES];

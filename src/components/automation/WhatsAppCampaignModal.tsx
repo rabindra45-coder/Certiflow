@@ -295,7 +295,19 @@ export const WhatsAppCampaignModal: React.FC<WhatsAppCampaignModalProps> = ({
           })
         });
 
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
+        let data: any;
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          data = {
+            success: false,
+            message: (res.status === 404 || text.includes('<!DOCTYPE'))
+              ? 'Backend API (/api/whatsapp/send) not reachable.'
+              : `Server returned non-JSON response (${res.status}).`
+          };
+        }
         if (data.success) {
           successCount++;
           campaignLogs.push({
