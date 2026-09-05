@@ -1,60 +1,88 @@
 import express from 'express';
 import nodemailer from 'nodemailer';
-import { setStore, getStore, all } from '../server/db';
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
 
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
-// Helper to safely resolve SMTP security mode:
-function resolveSmtpSecurity(port: number | string, secure?: boolean): boolean {
-  const portNum = Number(port);
-  if (portNum === 465) {
-    return true;
+// In-memory + /tmp json persistence for serverless
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const dataDir = isServerless ? '/tmp' : path.resolve(process.cwd(), 'data');
+
+try {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-  if (portNum === 587 || portNum === 25) {
-    return false;
-  }
-  return Boolean(secure);
+} catch {
+  // Ignore filesystem creation errors
 }
 
-// API health check
-app.get('/api/health', (_req, res) => {
+const dbPath = path.join(dataDir, 'certiflow.json');
+let dbStore: Record<string, string> = {};
+
+try {
+  if (fs.existsSync(dbPath)) {
+    dbStore = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+  }
+} catch {
+  dbStore = {};
+}
+
+function persistStore() {
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify(dbStore, null, 2));
+  } catch {
+    // Ignore write error in ephemeral environments
+  }
+}
+
+// Router to support both /api/path and /path
+const router = express.Router();
+
+router.get('/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// DB Store APIs
-app.get('/api/store/all', async (_req, res) => {
+router.get('/store/all', (_req, res) => {
   try {
-    const rows = await all('SELECT key, value FROM store');
     const data: Record<string, any> = {};
-    rows.forEach(r => {
+    Object.keys(dbStore).forEach(key => {
       try {
-        data[r.key] = JSON.parse(r.value);
+        data[key] = JSON.parse(dbStore[key]);
       } catch {
-        data[r.key] = r.value;
+        data[key] = dbStore[key];
       }
     });
     res.json({ success: true, data });
   } catch (err: any) {
-    res.json({ success: false, message: err.message || 'Store fetch failed' });
+    res.json({ success: false, message: err?.message || 'Store fetch failed' });
   }
 });
 
-app.post('/api/store', async (req, res) => {
+router.post('/store', (req, res) => {
   try {
     const { key, value } = req.body || {};
     if (!key) return res.status(400).json({ success: false, message: 'Missing key' });
-    await setStore(key, JSON.stringify(value));
+    dbStore[key] = typeof value === 'string' ? value : JSON.stringify(value);
+    persistStore();
     res.json({ success: true });
   } catch (err: any) {
-    res.json({ success: false, message: err.message || 'Store write failed' });
+    res.json({ success: false, message: err?.message || 'Store write failed' });
   }
 });
 
-// SMTP Verification Handshake API
-app.post('/api/smtp/verify', async (req, res) => {
+// Helper to safely resolve SMTP security mode:
+function resolveSmtpSecurity(port: number | string, secure?: boolean): boolean {
+  const portNum = Number(port);
+  if (portNum === 465) return true;
+  if (portNum === 587 || portNum === 25) return false;
+  return Boolean(secure);
+}
+
+router.post('/smtp/verify', async (req, res) => {
   try {
     const { host, port, secure, user, pass, ignoreTls } = req.body || {};
 
@@ -146,8 +174,7 @@ app.post('/api/smtp/verify', async (req, res) => {
   }
 });
 
-// SMTP Send Test
-app.post('/api/smtp/send-test', async (req, res) => {
+router.post('/smtp/send-test', async (req, res) => {
   try {
     const { config, recipientEmail, subject } = req.body || {};
 
@@ -203,8 +230,7 @@ app.post('/api/smtp/send-test', async (req, res) => {
   }
 });
 
-// SMTP Send Certificate
-app.post('/api/smtp/send-certificate', async (req, res) => {
+router.post('/smtp/send-certificate', async (req, res) => {
   try {
     const { config, recipientEmail, recipientName, subject, text, html, pdfBase64, filename } = req.body || {};
 
@@ -266,12 +292,15 @@ app.post('/api/smtp/send-certificate', async (req, res) => {
   }
 });
 
-// Global fallback error handler
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled API Error:', err);
+// Attach router to both /api and root / to handle Vercel rewrite variations
+app.use('/api', router);
+app.use('/', router);
+
+// Default fallback handler for non-matching routes
+app.use((_req, res) => {
   res.status(200).json({
     success: false,
-    message: err?.message || 'An unexpected server error occurred.'
+    message: 'API route not found on server.'
   });
 });
 
