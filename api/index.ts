@@ -38,60 +38,76 @@ app.get('/api/store/all', async (_req, res) => {
     });
     res.json({ success: true, data });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    res.json({ success: false, message: err.message || 'Store fetch failed' });
   }
 });
 
 app.post('/api/store', async (req, res) => {
   try {
-    const { key, value } = req.body;
+    const { key, value } = req.body || {};
     if (!key) return res.status(400).json({ success: false, message: 'Missing key' });
     await setStore(key, JSON.stringify(value));
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    res.json({ success: false, message: err.message || 'Store write failed' });
   }
 });
 
 // SMTP Verification Handshake API
 app.post('/api/smtp/verify', async (req, res) => {
-  const { host, port, secure, user, pass, ignoreTls } = req.body || {};
-
-  if (!host || !port) {
-    return res.status(400).json({
-      success: false,
-      message: 'Missing SMTP Host or Port.'
-    });
-  }
-
-  const portNum = Number(port);
-  const isSecure = resolveSmtpSecurity(portNum, secure);
-
-  const isPublicProvider = /gmail\.com|outlook\.com|office365\.com|yahoo\.com|zoho\.com|sendgrid\.net|mailgun\.org/i.test(host);
-  if (isPublicProvider && (!user || !pass)) {
-    return res.status(400).json({
-      success: false,
-      message: `Authentication required for ${host}. Please enter username and password / app password.`
-    });
-  }
-
-  const startTime = Date.now();
-
   try {
-    const transporter = nodemailer.createTransport({
-      host,
+    const { host, port, secure, user, pass, ignoreTls } = req.body || {};
+
+    if (!host || !port) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing SMTP Host or Port.'
+      });
+    }
+
+    const portNum = Number(port);
+    const isSecure = resolveSmtpSecurity(portNum, secure);
+
+    const hostLower = String(host || '').toLowerCase();
+    const isMajorProvider =
+      hostLower.includes('gmail') ||
+      hostLower.includes('google') ||
+      hostLower.includes('office365') ||
+      hostLower.includes('outlook') ||
+      hostLower.includes('sendgrid') ||
+      hostLower.includes('mailgun') ||
+      hostLower.includes('amazonaws');
+
+    if (isMajorProvider && (!user || !pass)) {
+      return res.status(200).json({
+        success: false,
+        message: `Authentication required for ${host}. Please enter username and password / app password.`,
+        details: { latencyMs: 0, code: 'AUTH_REQUIRED' }
+      });
+    }
+
+    const startTime = Date.now();
+
+    const transportConfig: any = {
+      host: String(host).trim(),
       port: portNum,
       secure: isSecure,
-      auth: (user && pass) ? { user, pass } : undefined,
-      tls: {
-        rejectUnauthorized: !ignoreTls,
-        ciphers: 'SSLv3'
-      },
       connectionTimeout: 10000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000
-    });
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: !Boolean(ignoreTls)
+      }
+    };
 
+    if (user && pass) {
+      transportConfig.auth = {
+        user: String(user).trim(),
+        pass: String(pass).trim()
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig);
     await transporter.verify();
     const latencyMs = Date.now() - startTime;
 
@@ -106,27 +122,25 @@ app.post('/api/smtp/verify', async (req, res) => {
       }
     });
   } catch (err: any) {
-    const latencyMs = Date.now() - startTime;
     let errMsg = err?.message || 'SMTP Handshake verification failed.';
 
     if (errMsg.includes('EAUTH') || errMsg.includes('Invalid login') || errMsg.includes('535')) {
       errMsg = 'Authentication failed (535): Invalid username or password/app password.';
     } else if (errMsg.includes('ETIMEDOUT') || errMsg.includes('ESOCKETTIMEDOUT')) {
-      errMsg = `Connection timed out connecting to ${host}:${portNum}. Verify host and port.`;
+      errMsg = `Connection timed out connecting to ${req.body?.host || 'server'}:${req.body?.port || ''}. Verify host and port.`;
     } else if (errMsg.includes('ECONNREFUSED')) {
-      errMsg = `Connection refused at ${host}:${portNum}.`;
+      errMsg = `Connection refused at ${req.body?.host || 'server'}:${req.body?.port || ''}.`;
     } else if (errMsg.includes('wrong version number') || errMsg.includes('SSL routines')) {
-      errMsg = `TLS/SSL Mismatch: Port ${portNum} expected STARTTLS (secure: false).`;
+      errMsg = `TLS/SSL Mismatch: Port ${req.body?.port} expected STARTTLS (secure: false).`;
     }
 
     return res.status(200).json({
       success: false,
       message: errMsg,
       details: {
-        host,
-        port: portNum,
-        secure: isSecure,
-        latencyMs
+        host: req.body?.host,
+        port: req.body?.port,
+        latencyMs: 0
       }
     });
   }
@@ -134,28 +148,39 @@ app.post('/api/smtp/verify', async (req, res) => {
 
 // SMTP Send Test
 app.post('/api/smtp/send-test', async (req, res) => {
-  const { config, recipientEmail, subject } = req.body || {};
-
-  if (!config?.host || !config?.port) {
-    return res.status(400).json({ success: false, message: 'Missing SMTP configuration.' });
-  }
-  if (!recipientEmail) {
-    return res.status(400).json({ success: false, message: 'Missing recipient email address.' });
-  }
-
-  const portNum = Number(config.port);
-  const isSecure = resolveSmtpSecurity(portNum, config.secure);
-
   try {
-    const transporter = nodemailer.createTransport({
-      host: config.host,
+    const { config, recipientEmail, subject } = req.body || {};
+
+    if (!config?.host || !config?.port) {
+      return res.status(400).json({ success: false, message: 'Missing SMTP configuration.' });
+    }
+    if (!recipientEmail) {
+      return res.status(400).json({ success: false, message: 'Missing recipient email address.' });
+    }
+
+    const portNum = Number(config.port);
+    const isSecure = resolveSmtpSecurity(portNum, config.secure);
+
+    const transportConfig: any = {
+      host: String(config.host).trim(),
       port: portNum,
       secure: isSecure,
-      auth: (config.user && config.pass) ? { user: config.user, pass: config.pass } : undefined,
-      tls: { rejectUnauthorized: !config.ignoreTls },
       connectionTimeout: 10000,
-      greetingTimeout: 8000
-    });
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+      tls: {
+        rejectUnauthorized: !Boolean(config.ignoreTls)
+      }
+    };
+
+    if (config.user && config.pass) {
+      transportConfig.auth = {
+        user: String(config.user).trim(),
+        pass: String(config.pass).trim()
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig);
 
     const info = await transporter.sendMail({
       from: `"${config.fromName || 'CertiFlow System'}" <${config.fromEmail || config.user || 'no-reply@certiflow.app'}>`,
@@ -180,24 +205,34 @@ app.post('/api/smtp/send-test', async (req, res) => {
 
 // SMTP Send Certificate
 app.post('/api/smtp/send-certificate', async (req, res) => {
-  const { config, recipientEmail, recipientName, subject, text, html, pdfBase64, filename } = req.body || {};
-
-  if (!config?.host || !config?.port) {
-    return res.status(400).json({ success: false, message: 'Missing SMTP configuration.' });
-  }
-
-  const portNum = Number(config.port);
-  const isSecure = resolveSmtpSecurity(portNum, config.secure);
-
   try {
-    const transporter = nodemailer.createTransport({
-      host: config.host,
+    const { config, recipientEmail, recipientName, subject, text, html, pdfBase64, filename } = req.body || {};
+
+    if (!config?.host || !config?.port) {
+      return res.status(400).json({ success: false, message: 'Missing SMTP configuration.' });
+    }
+
+    const portNum = Number(config.port);
+    const isSecure = resolveSmtpSecurity(portNum, config.secure);
+
+    const transportConfig: any = {
+      host: String(config.host).trim(),
       port: portNum,
       secure: isSecure,
-      auth: (config.user && config.pass) ? { user: config.user, pass: config.pass } : undefined,
-      tls: { rejectUnauthorized: !config.ignoreTls },
-      connectionTimeout: 12000
-    });
+      connectionTimeout: 12000,
+      tls: {
+        rejectUnauthorized: !Boolean(config.ignoreTls)
+      }
+    };
+
+    if (config.user && config.pass) {
+      transportConfig.auth = {
+        user: String(config.user).trim(),
+        pass: String(config.pass).trim()
+      };
+    }
+
+    const transporter = nodemailer.createTransport(transportConfig);
 
     const attachments = [];
     if (pdfBase64) {
@@ -229,6 +264,15 @@ app.post('/api/smtp/send-certificate', async (req, res) => {
       message: err?.message || 'Failed to dispatch certificate email.'
     });
   }
+});
+
+// Global fallback error handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled API Error:', err);
+  res.status(200).json({
+    success: false,
+    message: err?.message || 'An unexpected server error occurred.'
+  });
 });
 
 export default app;

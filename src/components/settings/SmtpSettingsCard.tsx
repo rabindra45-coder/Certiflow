@@ -171,23 +171,22 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
         })
       });
 
-      const contentType = response.headers.get('content-type') || '';
+      const text = await response.text();
       let data: SmtpTestResult;
 
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
         if (response.status === 404 || text.includes('<!DOCTYPE') || text.includes('<html')) {
           data = {
             success: false,
-            message: 'Backend SMTP API endpoint not reachable (404/SPA rewrite). Ensure Vercel Serverless Function or Express server is active.',
+            message: `Backend SMTP API endpoint not reachable or function error (${response.status}). Check server logs.`,
             details: { latencyMs: 0 }
           };
         } else {
           data = {
             success: false,
-            message: `Server returned unexpected response (${response.status}).`,
+            message: `Server response error (${response.status}): ${text.slice(0, 150)}`,
             details: { latencyMs: 0 }
           };
         }
@@ -250,23 +249,22 @@ export const SmtpSettingsCard: React.FC<SmtpSettingsCardProps> = ({ onShowToast 
         })
       });
 
-      const contentType = response.headers.get('content-type') || '';
+      const text = await response.text();
       let data: SmtpTestResult;
 
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
+      try {
+        data = JSON.parse(text);
+      } catch {
         if (response.status === 404 || text.includes('<!DOCTYPE') || text.includes('<html')) {
           data = {
             success: false,
-            message: 'Backend SMTP API endpoint not reachable (404/SPA rewrite). Ensure Vercel Serverless Function or Express server is active.',
+            message: `Backend email dispatcher endpoint not reachable or function error (${response.status}). Check server logs.`,
             details: {}
           };
         } else {
           data = {
             success: false,
-            message: `Server returned unexpected response (${response.status}).`,
+            message: `Server response error (${response.status}): ${text.slice(0, 150)}`,
             details: {}
           };
         }
